@@ -1,13 +1,13 @@
 import { initializeApp } from "firebase/app";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB4kSCgdJLSCFMUdEyqT_I9xgrEFNnPulQ",
-  authDomain: "ijtima-ae364.firebaseapp.com",
-  projectId: "ijtima-ae364",
-  storageBucket: "ijtima-ae364.appspot.com",   // corrected: should end with .appspot.com
-  messagingSenderId: "843664116262",
-  appId: "1:843664116262:web:b6144381ce4b92934374e7",
-  measurementId: "G-HGZZGTGFZN"
+  apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
+  authDomain: "donation-boxes-79ff0.firebaseapp.com",
+  projectId: "donation-boxes-79ff0",
+  storageBucket: "donation-boxes-79ff0.firebasestorage.app",
+  messagingSenderId: "655743529358",
+  appId: "1:655743529358:web:c13d1d02b9863f54b834df",
+  measurementId: "G-GMEDXC6PK8"
 };
 
 export const app = initializeApp(firebaseConfig);

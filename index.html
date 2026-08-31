@@ -10,6 +10,7 @@
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #f2f2f2; }
+    #summary table { margin-top: 20px; }
   </style>
 </head>
 
@@ -21,6 +22,8 @@
 
   <label>Month:</label>
   <select id="month"></select>
+
+  <div id="summary"></div>
 
   <div id="table"></div>
 
@@ -57,7 +60,7 @@
         }
 
         populateFilters();
-        renderTable(sheetData);
+        filterData(); // show summary immediately
       });
     }
 
@@ -89,9 +92,68 @@
       if (city) filtered = filtered.filter(r => r.City === city);
       if (month) filtered = filtered.filter(r => r.Month === month);
 
+      renderSummary(filtered);
       renderTable(filtered);
     }
 
+    // ---------------------------
+    // ⭐ STEP 1: Calculate totals
+    // ---------------------------
+    function calculateIncomeByCityMonth(data) {
+      const totals = {};
+
+      data.forEach(row => {
+        const city = row.City || "Unknown";
+        const month = row.Month || "Unknown";
+        const income = parseFloat(row.TotalIncome) || 0;
+
+        const key = `${city}__${month}`;
+
+        if (!totals[key]) {
+          totals[key] = 0;
+        }
+
+        totals[key] += income;
+      });
+
+      return totals;
+    }
+
+    // ---------------------------
+    // ⭐ STEP 2: Format currency
+    // ---------------------------
+    function formatCurrency(amount) {
+      return `$${amount.toFixed(2)}`;
+    }
+
+    // ---------------------------
+    // ⭐ STEP 3: Render summary
+    // ---------------------------
+    function renderSummary(filtered) {
+      const totals = calculateIncomeByCityMonth(filtered);
+
+      let html = "<h3>Total Income per City per Month</h3>";
+      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th></tr>";
+
+      Object.keys(totals).forEach(key => {
+        const [city, month] = key.split("__");
+        html += `
+          <tr>
+            <td>${city}</td>
+            <td>${month}</td>
+            <td>${formatCurrency(totals[key])}</td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+
+      document.getElementById("summary").innerHTML = html;
+    }
+
+    // ---------------------------
+    // Existing table renderer
+    // ---------------------------
     function renderTable(rows) {
       if (!rows.length) {
         document.getElementById('table').innerHTML = "<p>No data found.</p>";

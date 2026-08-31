@@ -104,4 +104,105 @@
       let filtered = sheetData;
 
       if (city) filtered = filtered.filter(r => r.City === city);
-      if (month) filtered = filtered.filter
+      if (month) filtered = filtered.filter(r => r.Month === month);
+
+      renderSummary(filtered);
+      renderTable(filtered);
+    }
+
+    // ⭐ STEP 1: Calculate totals + averages
+    function calculateIncomeByCityMonth(data) {
+      const totals = {};
+
+      data.forEach(row => {
+        const city = row.City || "Unknown";
+        const month = row.Month || "Unknown";
+        const income = parseFloat(row.TotalIncome) || 0;
+
+        const key = `${city}__${month}`;
+
+        if (!totals[key]) {
+          totals[key] = { total: 0, count: 0 };
+        }
+
+        totals[key].total += income;
+        totals[key].count += 1;
+      });
+
+      return totals;
+    }
+
+    // ⭐ STEP 2: Currency formatting
+    function formatCurrency(amount) {
+      return `$${amount.toFixed(2)}`;
+    }
+
+    // ⭐ STEP 3: Render summary (sorted by highest total income)
+    function renderSummary(filtered) {
+      const totals = calculateIncomeByCityMonth(filtered);
+
+      let entries = Object.keys(totals).map(key => {
+        const [city, month] = key.split("__");
+        const total = totals[key].total;
+        const avg = total / totals[key].count;
+        return { city, month, total, avg };
+      });
+
+      // Sort by highest total income
+      entries.sort((a, b) => b.total - a.total);
+
+      let html = "<h3>Total & Average Income per City per Month</h3>";
+      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th><th>Average Income</th></tr>";
+
+      entries.forEach(e => {
+        html += `
+          <tr>
+            <td>${e.city}</td>
+            <td>${e.month}</td>
+            <td>${formatCurrency(e.total)}</td>
+            <td>${formatCurrency(e.avg)}</td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+
+      document.getElementById("summary").innerHTML = html;
+    }
+
+    // ⭐ STEP 4: Render main table with currency formatting
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById('table').innerHTML = "<p>No data found.</p>";
+        return;
+      }
+
+      let html = "<table><tr>";
+
+      // Hide Timestamp column
+      const columns = Object.keys(rows[0]).filter(c => c !== "Timestamp");
+
+      columns.forEach(col => html += `<th>${col}</th>`);
+      html += "</tr>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        columns.forEach(key => {
+          let value = r[key];
+
+          if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
+            const num = parseFloat(value);
+            value = isNaN(num) ? value : `$${num.toFixed(2)}`;
+          }
+
+          html += `<td>${value}</td>`;
+        });
+        html += "</tr>";
+      });
+
+      html += "</table>";
+      document.getElementById('table').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

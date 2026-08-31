@@ -98,4 +98,134 @@
       const dropdown = document.getElementById(id);
       dropdown.innerHTML = '<option value="">All</option>';
       items.forEach(item => {
-        dropdown.innerHTML += `<option value="${item}">${item}</option>
+        dropdown.innerHTML += `<option value="${item}">${item}</option>`;
+      });
+    }
+
+    function filterData() {
+      const city = document.getElementById('city').value.toLowerCase();
+      const month = document.getElementById('month').value;
+
+      let filtered = sheetData;
+
+      if (city) filtered = filtered.filter(r => r.City === city);
+      if (month) filtered = filtered.filter(r => r.Month === month);
+
+      renderSummary(filtered);
+      renderTable(filtered);
+    }
+
+    function capitalize(str) {
+      if (!str) return "";
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // ⭐ STEP 1: Calculate totals + active boxes + averages
+    function calculateIncomeByCityMonth(data) {
+      const totals = {};
+
+      data.forEach(row => {
+        const city = row.City || "unknown";
+        const month = row.Month || "unknown";
+
+        const income = parseFloat(row.TotalIncome) || 0;
+        const active = parseFloat(row.ActiveBoxes) || 0;
+
+        const key = `${city}__${month}`;
+
+        if (!totals[key]) {
+          totals[key] = { totalIncome: 0, totalActive: 0 };
+        }
+
+        totals[key].totalIncome += income;
+        totals[key].totalActive += active;
+      });
+
+      return totals;
+    }
+
+    function formatCurrency(amount) {
+      return `$${amount.toFixed(2)}`;
+    }
+
+    // ⭐ STEP 2: Render summary using Active Boxes
+    function renderSummary(filtered) {
+      const totals = calculateIncomeByCityMonth(filtered);
+
+      let entries = Object.keys(totals).map(key => {
+        const [city, month] = key.split("__");
+
+        const totalIncome = totals[key].totalIncome;
+        const totalActive = totals[key].totalActive;
+
+        const avg = totalActive > 0 ? (totalIncome / totalActive) : 0;
+
+        return {
+          city: capitalize(city),
+          month,
+          totalIncome,
+          totalActive,
+          avg
+        };
+      });
+
+      // Sort by highest total income
+      entries.sort((a, b) => b.totalIncome - a.totalIncome);
+
+      let html = "<h3>Total & Average Income per City per Month (Per Active Box)</h3>";
+      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th><th>Total Active Boxes</th><th>Avg Income per Active Box</th></tr>";
+
+      entries.forEach(e => {
+        html += `
+          <tr>
+            <td>${e.city}</td>
+            <td>${e.month}</td>
+            <td>${formatCurrency(e.totalIncome)}</td>
+            <td>${e.totalActive}</td>
+            <td>${formatCurrency(e.avg)}</td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+
+      document.getElementById("summary").innerHTML = html;
+    }
+
+    // ⭐ STEP 3: Render main table with currency formatting
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById('table').innerHTML = "<p>No data found.</p>";
+        return;
+      }
+
+      let html = "<table><tr>";
+
+      const columns = Object.keys(rows[0]).filter(c => c !== "Timestamp");
+
+      columns.forEach(col => html += `<th>${col}</th>`);
+      html += "</tr>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        columns.forEach(key => {
+          let value = r[key];
+
+          if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
+            const num = parseFloat(value);
+            value = isNaN(num) ? value : `$${num.toFixed(2)}`;
+          }
+
+          if (key === "City") value = capitalize(value);
+
+          html += `<td>${value}</td>`;
+        });
+        html += "</tr>";
+      });
+
+      html += "</table>";
+      document.getElementById('table').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

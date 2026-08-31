@@ -3,6 +3,7 @@
 <head>
   <title>Madani Donation Box Dashboard</title>
   <script src="https://www.gstatic.com/charts/loader.js"></script>
+
   <style>
     body { font-family: Arial; margin: 20px; }
     select { padding: 6px; margin-right: 10px; }
@@ -41,12 +42,15 @@
         sheetData = [];
 
         for (let i = 0; i < data.getNumberOfRows(); i++) {
-          const timestamp = data.getValue(i, 0);
-          let month = data.getValue(i, 11);
-          let city = data.getValue(i, 2);
 
-          // Normalize city and month
+          const timestamp = data.getValue(i, 0);
+          let city = data.getValue(i, 2);
+          let month = data.getValue(i, 11);
+
+          // Normalize city
           if (city) city = city.trim().replace(/\u00A0/g, "").toLowerCase();
+
+          // Normalize month
           if (month) month = month.trim().replace(/\u00A0/g, "");
 
           // Extract month from timestamp if missing
@@ -94,110 +98,4 @@
       const dropdown = document.getElementById(id);
       dropdown.innerHTML = '<option value="">All</option>';
       items.forEach(item => {
-        dropdown.innerHTML += `<option value="${item}">${item}</option>`;
-      });
-    }
-
-    function filterData() {
-      const city = document.getElementById('city').value.toLowerCase();
-      const month = document.getElementById('month').value;
-
-      let filtered = sheetData;
-
-      if (city) filtered = filtered.filter(r => r.City === city);
-      if (month) filtered = filtered.filter(r => r.Month === month);
-
-      renderSummary(filtered);
-      renderTable(filtered);
-    }
-
-    // Capitalize city names for display
-    function capitalize(str) {
-      if (!str) return "";
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
-    // Calculate totals + averages
-    function calculateIncomeByCityMonth(data) {
-      const totals = {};
-
-      data.forEach(row => {
-        const city = row.City || "unknown";
-        const month = row.Month || "unknown";
-        const income = parseFloat(row.TotalIncome) || 0;
-        const key = `${city}__${month}`;
-
-        if (!totals[key]) totals[key] = { total: 0, count: 0 };
-        totals[key].total += income;
-        totals[key].count += 1;
-      });
-
-      return totals;
-    }
-
-    function formatCurrency(amount) {
-      return `$${amount.toFixed(2)}`;
-    }
-
-    // Render summary (sorted by highest total income)
-    function renderSummary(filtered) {
-      const totals = calculateIncomeByCityMonth(filtered);
-
-      let entries = Object.keys(totals).map(key => {
-        const [city, month] = key.split("__");
-        const total = totals[key].total;
-        const avg = total / totals[key].count;
-        return { city: capitalize(city), month, total, avg };
-      });
-
-      entries.sort((a, b) => b.total - a.total);
-
-      let html = "<h3>Total & Average Income per City per Month</h3>";
-      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th><th>Average Income</th></tr>";
-
-      entries.forEach(e => {
-        html += `
-          <tr>
-            <td>${e.city}</td>
-            <td>${e.month}</td>
-            <td>${formatCurrency(e.total)}</td>
-            <td>${formatCurrency(e.avg)}</td>
-          </tr>`;
-      });
-
-      html += "</table>";
-      document.getElementById("summary").innerHTML = html;
-    }
-
-    // Render main table with currency formatting
-    function renderTable(rows) {
-      if (!rows.length) {
-        document.getElementById('table').innerHTML = "<p>No data found.</p>";
-        return;
-      }
-
-      let html = "<table><tr>";
-      const columns = Object.keys(rows[0]).filter(c => c !== "Timestamp");
-      columns.forEach(col => html += `<th>${col}</th>`);
-      html += "</tr>";
-
-      rows.forEach(r => {
-        html += "<tr>";
-        columns.forEach(key => {
-          let value = r[key];
-          if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
-            const num = parseFloat(value);
-            value = isNaN(num) ? value : `$${num.toFixed(2)}`;
-          }
-          if (key === "City") value = capitalize(value);
-          html += `<td>${value}</td>`;
-        });
-        html += "</tr>";
-      });
-
-      html += "</table>";
-      document.getElementById('table').innerHTML = html;
-    }
-  </script>
-</body>
-</html>
+        dropdown.innerHTML += `<option value="${item}">${item}</option>

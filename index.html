@@ -35,7 +35,7 @@
 
     function loadData() {
       const query = new google.visualization.Query(
-        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=B:M"
+        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
       );
 
       query.send(response => {
@@ -43,24 +43,38 @@
         sheetData = [];
 
         for (let i = 0; i < data.getNumberOfRows(); i++) {
+
+          // Extract timestamp
+          const timestamp = data.getValue(i, 0);
+
+          // Extract month from Timestamp if Month column is empty
+          let month = data.getValue(i, 11); // Column L (Month)
+          if (!month && timestamp) {
+            const d = new Date(timestamp);
+            const m = d.toLocaleString("default", { month: "long" });
+            const y = d.getFullYear();
+            month = `${m} ${y}`;
+          }
+
           sheetData.push({
-            Email: data.getValue(i, 0),
-            City: data.getValue(i, 1),
-            TotalBoxes: data.getValue(i, 2),
-            ActiveBoxes: data.getValue(i, 3),
-            DeactiveBoxes: data.getValue(i, 4),
-            BoxesAdd: data.getValue(i, 5),
-            TotalCurrentBoxes: data.getValue(i, 6),
-            TotalIncome: data.getValue(i, 7),
-            BoxesInHand: data.getValue(i, 8),
-            Name: data.getValue(i, 9),
-            Month: data.getValue(i, 10),
-            AvgIncomeActiveBox: data.getValue(i, 11)
+            Timestamp: timestamp, // NOT displayed
+            Email: data.getValue(i, 1),
+            City: data.getValue(i, 2),
+            TotalBoxes: data.getValue(i, 3),
+            ActiveBoxes: data.getValue(i, 4),
+            DeactiveBoxes: data.getValue(i, 5),
+            BoxesAdd: data.getValue(i, 6),
+            TotalCurrentBoxes: data.getValue(i, 7),
+            TotalIncome: data.getValue(i, 8),
+            BoxesInHand: data.getValue(i, 9),
+            Name: data.getValue(i, 10),
+            Month: month,
+            AvgIncomeActiveBox: data.getValue(i, 12)
           });
         }
 
         populateFilters();
-        filterData(); // show summary immediately
+        filterData();
       });
     }
 
@@ -90,101 +104,4 @@
       let filtered = sheetData;
 
       if (city) filtered = filtered.filter(r => r.City === city);
-      if (month) filtered = filtered.filter(r => r.Month === month);
-
-      renderSummary(filtered);
-      renderTable(filtered);
-    }
-
-    // ---------------------------
-    // ⭐ STEP 1: Calculate totals
-    // ---------------------------
-    function calculateIncomeByCityMonth(data) {
-      const totals = {};
-
-      data.forEach(row => {
-        const city = row.City || "Unknown";
-        const month = row.Month || "Unknown";
-        const income = parseFloat(row.TotalIncome) || 0;
-
-        const key = `${city}__${month}`;
-
-        if (!totals[key]) {
-          totals[key] = 0;
-        }
-
-        totals[key] += income;
-      });
-
-      return totals;
-    }
-
-    // ---------------------------
-    // ⭐ STEP 2: Format currency
-    // ---------------------------
-    function formatCurrency(amount) {
-      return `$${amount.toFixed(2)}`;
-    }
-
-    // ---------------------------
-    // ⭐ STEP 3: Render summary
-    // ---------------------------
-    function renderSummary(filtered) {
-      const totals = calculateIncomeByCityMonth(filtered);
-
-      let html = "<h3>Total Income per City per Month</h3>";
-      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th></tr>";
-
-      Object.keys(totals).forEach(key => {
-        const [city, month] = key.split("__");
-        html += `
-          <tr>
-            <td>${city}</td>
-            <td>${month}</td>
-            <td>${formatCurrency(totals[key])}</td>
-          </tr>
-        `;
-      });
-
-      html += "</table>";
-
-      document.getElementById("summary").innerHTML = html;
-    }
-
-    // ---------------------------
-    // Existing table renderer
-    // ---------------------------
-    function renderTable(rows) {
-  if (!rows.length) {
-    document.getElementById('table').innerHTML = "<p>No data found.</p>";
-    return;
-  }
-
-  let html = "<table><tr>";
-
-  Object.keys(rows[0]).forEach(col => html += `<th>${col}</th>`);
-  html += "</tr>";
-
-  rows.forEach(r => {
-    html += "<tr>";
-    Object.keys(r).forEach(key => {
-      let value = r[key];
-
-      // ⭐ Apply currency formatting to TotalIncome and AvgIncomeActiveBox
-      if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
-        const num = parseFloat(value);
-        value = isNaN(num) ? value : `$${num.toFixed(2)}`;
-      }
-
-      html += `<td>${value}</td>`;
-    });
-    html += "</tr>";
-  });
-
-  html += "</table>";
-  document.getElementById('table').innerHTML = html;
-}
-
-  </script>
-</body>
-</html>
+      if (month) filtered = filtered.filter

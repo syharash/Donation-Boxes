@@ -47,22 +47,21 @@
           // Extract timestamp
           const timestamp = data.getValue(i, 0);
 
-          // Extract month from Timestamp if Month column is empty
-         let month = data.getValue(i, 11);
+          // Extract Month column (L)
+          let month = data.getValue(i, 11);
 
-// Normalize Month values
-if (month) {
-  month = month.trim().replace(/\u00A0/g, "");
-}
+          // Normalize Month values (remove trailing spaces + invisible Unicode NBSP)
+          if (month) {
+            month = month.trim().replace(/\u00A0/g, "");
+          }
 
-// If Month is empty, extract from Timestamp
-if (!month && timestamp) {
-  const d = new Date(timestamp);
-  const m = d.toLocaleString("default", { month: "long" });
-  const y = d.getFullYear();
-  month = `${m} ${y}`;
-}
-
+          // If Month is empty, extract from Timestamp
+          if (!month && timestamp) {
+            const d = new Date(timestamp);
+            const m = d.toLocaleString("default", { month: "long" });
+            const y = d.getFullYear();
+            month = `${m} ${y}`;  // Option A
+          }
 
           sheetData.push({
             Timestamp: timestamp, // NOT displayed
@@ -156,7 +155,7 @@ if (!month && timestamp) {
         return { city, month, total, avg };
       });
 
-      // Sort by highest total income
+      // Sort by highest total income (Option 3)
       entries.sort((a, b) => b.total - a.total);
 
       let html = "<h3>Total & Average Income per City per Month</h3>";

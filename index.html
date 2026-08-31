@@ -1,147 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Donation Box Dashboard</title>
-
-  <!-- Material UI CDN -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-
-  <!-- Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+  <title>Madani Donation Box Dashboard</title>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
 
   <style>
-    body {
-      font-family: Roboto, sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
-    }
-    .city-card {
-      margin-bottom: 20px;
-    }
+    body { font-family: Arial; margin: 20px; }
+    select { padding: 6px; margin-right: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f2f2f2; }
   </style>
 </head>
 
 <body>
+  <h2>Madani Donation Box Dashboard</h2>
 
-  <h1 style="text-align:center; margin-bottom:30px;">Donation Box Dashboard</h1>
+  <label>City:</label>
+  <select id="city"></select>
 
-  <div id="dashboard"></div>
+  <label>Month:</label>
+  <select id="month"></select>
+
+  <div id="table"></div>
 
   <script>
-    // ---------------------------
-    // Firebase Config
-    // ---------------------------
-    const firebaseConfig = {
-  apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
-  authDomain: "donation-boxes-79ff0.firebaseapp.com",
-  projectId: "donation-boxes-79ff0",
-  storageBucket: "donation-boxes-79ff0.firebasestorage.app",
-  messagingSenderId: "655743529358",
-  appId: "1:655743529358:web:c13d1d02b9863f54b834df",
-  measurementId: "G-GMEDXC6PK8"
-};
+    google.charts.load('current', { packages: ['table'] });
+    google.charts.setOnLoadCallback(loadData);
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    let sheetData = [];
 
-    // ---------------------------
-    // Authentication Check
-    // ---------------------------
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        document.body.innerHTML = "<h2>Please login to access the dashboard.</h2>";
-        return;
-      }
-      loadDashboard();
-    });
+    function loadData() {
+      const query = new google.visualization.Query(
+        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=B:M"
+      );
 
-    // ---------------------------
-    // Load Dashboard Data
-    // ---------------------------
-    async function loadDashboard() {
-      const dashboard = document.getElementById("dashboard");
-      dashboard.innerHTML = "<h3>Loading data...</h3>";
+      query.send(response => {
+        const data = response.getDataTable();
+        sheetData = [];
 
-      const snapshot = await db.collection("cities").get();
-      const cities = snapshot.docs.map(doc => doc.data());
+        for (let i = 0; i < data.getNumberOfRows(); i++) {
+          sheetData.push({
+            Email: data.getValue(i, 0),
+            City: data.getValue(i, 1),
+            TotalBoxes: data.getValue(i, 2),
+            ActiveBoxes: data.getValue(i, 3),
+            DeactiveBoxes: data.getValue(i, 4),
+            BoxesAdd: data.getValue(i, 5),
+            TotalCurrentBoxes: data.getValue(i, 6),
+            TotalIncome: data.getValue(i, 7),
+            BoxesInHand: data.getValue(i, 8),
+            Name: data.getValue(i, 9),
+            Month: data.getValue(i, 10),
+            AvgIncomeActiveBox: data.getValue(i, 11)
+          });
+        }
 
-      // Sort cities alphabetically
-      cities.sort((a, b) => a.cityName.localeCompare(b.cityName));
-
-      dashboard.innerHTML = "";
-
-      cities.forEach(city => {
-        const card = createCityCard(city);
-        dashboard.appendChild(card);
+        populateFilters();
+        renderTable(sheetData);
       });
     }
 
-    // ---------------------------
-    // Create City Card
-    // ---------------------------
-    function createCityCard(city) {
-      const card = document.createElement("div");
-      card.className = "city-card";
+    function populateFilters() {
+      const cities = [...new Set(sheetData.map(r => r.City))];
+      const months = [...new Set(sheetData.map(r => r.Month))];
 
-      card.innerHTML = `
-        <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-          <h2>${city.cityName}</h2>
-          <p><strong>Supervisor:</strong> ${city.supervisor}</p>
-          <hr>
+      fillDropdown('city', cities);
+      fillDropdown('month', months);
 
-          <p><strong>Total Boxes:</strong> ${city.totalBoxes}</p>
-          <p><strong>Active Boxes:</strong> ${city.activeBoxes}</p>
-          <p><strong>Deactive Boxes:</strong> ${city.deactiveBoxes}</p>
-          <p><strong>Boxes Added:</strong> ${city.boxesAdded}</p>
-          <p><strong>Current Boxes:</strong> ${city.currentBoxes}</p>
-
-          <hr>
-
-          <p><strong>Total Income:</strong> $${city.totalIncome.toLocaleString()}</p>
-          <p><strong>Avg Income per Active Box:</strong> $${city.avgIncomePerActiveBox.toFixed(2)}</p>
-
-          <hr>
-          <h3>Monthly Income</h3>
-          ${createMonthlyTable(city.monthlyIncome)}
-        </div>
-      `;
-
-      return card;
+      document.getElementById('city').onchange = filterData;
+      document.getElementById('month').onchange = filterData;
     }
 
-    // ---------------------------
-    // Monthly Income Table
-    // ---------------------------
-    function createMonthlyTable(monthlyIncome) {
-      let rows = "";
+    function fillDropdown(id, items) {
+      const dropdown = document.getElementById(id);
+      dropdown.innerHTML = '<option value="">All</option>';
+      items.forEach(item => {
+        dropdown.innerHTML += `<option value="${item}">${item}</option>`;
+      });
+    }
 
-      Object.entries(monthlyIncome)
-        .sort(([a], [b]) => b.localeCompare(a)) // newest first
-        .forEach(([month, income]) => {
-          rows += `
-            <tr>
-              <td>${month}</td>
-              <td>$${income.toLocaleString()}</td>
-            </tr>
-          `;
-        });
+    function filterData() {
+      const city = document.getElementById('city').value;
+      const month = document.getElementById('month').value;
 
-      return `
-        <table border="1" cellpadding="6" style="width:100%; border-collapse:collapse;">
-          <tr>
-            <th>Month</th>
-            <th>Income</th>
-          </tr>
-          ${rows}
-        </table>
-      `;
+      let filtered = sheetData;
+
+      if (city) filtered = filtered.filter(r => r.City === city);
+      if (month) filtered = filtered.filter(r => r.Month === month);
+
+      renderTable(filtered);
+    }
+
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById('table').innerHTML = "<p>No data found.</p>";
+        return;
+      }
+
+      let html = "<table><tr>";
+
+      Object.keys(rows[0]).forEach(col => html += `<th>${col}</th>`);
+      html += "</tr>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        Object.values(r).forEach(v => html += `<td>${v}</td>`);
+        html += "</tr>";
+      });
+
+      html += "</table>";
+      document.getElementById('table').innerHTML = html;
     }
   </script>
-
 </body>
 </html>

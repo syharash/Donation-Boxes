@@ -155,25 +155,36 @@
     // Existing table renderer
     // ---------------------------
     function renderTable(rows) {
-      if (!rows.length) {
-        document.getElementById('table').innerHTML = "<p>No data found.</p>";
-        return;
+  if (!rows.length) {
+    document.getElementById('table').innerHTML = "<p>No data found.</p>";
+    return;
+  }
+
+  let html = "<table><tr>";
+
+  Object.keys(rows[0]).forEach(col => html += `<th>${col}</th>`);
+  html += "</tr>";
+
+  rows.forEach(r => {
+    html += "<tr>";
+    Object.keys(r).forEach(key => {
+      let value = r[key];
+
+      // ⭐ Apply currency formatting to TotalIncome and AvgIncomeActiveBox
+      if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
+        const num = parseFloat(value);
+        value = isNaN(num) ? value : `$${num.toFixed(2)}`;
       }
 
-      let html = "<table><tr>";
+      html += `<td>${value}</td>`;
+    });
+    html += "</tr>";
+  });
 
-      Object.keys(rows[0]).forEach(col => html += `<th>${col}</th>`);
-      html += "</tr>";
+  html += "</table>";
+  document.getElementById('table').innerHTML = html;
+}
 
-      rows.forEach(r => {
-        html += "<tr>";
-        Object.values(r).forEach(v => html += `<td>${v}</td>`);
-        html += "</tr>";
-      });
-
-      html += "</table>";
-      document.getElementById('table').innerHTML = html;
-    }
   </script>
 </body>
 </html>

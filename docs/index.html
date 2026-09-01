@@ -1,1 +1,338 @@
+<!DOCTYPE html>
+<html>
 
+<head>
+  <title>Madani Donation Box Dashboard</title>
+
+  <!-- Fix for Firebase Auth on GitHub Pages -->
+  <meta name="referrer" content="no-referrer-when-downgrade">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+
+  <!-- Google Charts -->
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    select { padding: 6px; margin-right: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f2f2f2; }
+    #summary table { margin-top: 20px; }
+    #loginBox { max-width: 300px; margin: auto; padding: 20px; border: 1px solid #ccc; }
+    #dashboard { display: none; }
+  </style>
+</head>
+
+
+  
+<body>
+
+  <!-- LOGIN BOX -->
+  <div id="loginBox">
+    <h3>Login</h3>
+    <button id="googleLoginBtn">Sign in with Google</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard">
+
+    <h2>Madani Donation Box Dashboard</h2>
+
+    <label>City:</label>
+    <select id="city"></select>
+
+    <label>Month:</label>
+    <select id="month"></select>
+
+    <div id="chart_total_income" style="width: 100%; height: 400px;"></div>
+    <div id="chart_avg_income" style="width: 100%; height: 400px;"></div>
+
+    <div id="summary"></div>
+    <div id="table"></div>
+
+  </div>
+
+  <script>
+    /* ---------------------------
+       FIREBASE INITIALIZATION
+    --------------------------- */
+    const firebaseConfig = {
+      apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
+      authDomain: "donation-boxes-79ff0.firebaseapp.com",
+      projectId: "donation-boxes-79ff0",
+      storageBucket: "donation-boxes-79ff0.firebasestorage.app",
+      messagingSenderId: "655743529358",
+      appId: "1:655743529358:web:c13d1d02b9863f54b834df",
+      measurementId: "G-GMEDXC6PK8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    document.getElementById("googleLoginBtn").onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(() => {
+          document.getElementById("loginBox").style.display = "none";
+          document.getElementById("dashboard").style.display = "block";
+          loadData();
+        })
+        .catch(err => alert(err.message));
+    };
+
+    /* ---------------------------
+       GOOGLE CHARTS
+    --------------------------- */
+    google.charts.load('current', { packages: ['corechart', 'table'] });
+
+    let sheetData = [];
+
+    function loadData() {
+      const query = new google.visualization.Query(
+        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
+      );
+
+      query.send(response => {
+        const data = response.getDataTable();
+        sheetData = [];
+
+        for (let i = 0; i < data.getNumberOfRows(); i++) {
+
+          const timestamp = data.getValue(i, 0);
+          let city = data.getValue(i, 2);
+          let month = data.getValue(i, 11);
+
+          if (city) city = city.trim().replace(/\u00A0/g, "").toLowerCase();
+          if (month) month = month.trim().replace(/\u00A0/g, "");
+
+          if (!month && timestamp) {
+            const d = new Date(timestamp);
+            const m = d.toLocaleString("default", { month: "long" });
+            const y = d.getFullYear();
+            month = `${m} ${y}`;
+          }
+
+          sheetData.push({
+            Timestamp: timestamp,
+            Email: data.getValue(i, 1),
+            City: city,
+            TotalBoxes: data.getValue(i, 3),
+            ActiveBoxes: data.getValue(i, 4),
+            DeactiveBoxes: data.getValue(i, 5),
+            BoxesAdd: data.getValue(i, 6),
+            TotalCurrentBoxes: data.getValue(i, 7),
+            TotalIncome: data.getValue(i, 8),
+            BoxesInHand: data.getValue(i, 9),
+            Name: data.getValue(i, 10),
+            Month: month,
+            AvgIncomeActiveBox: data.getValue(i, 12)
+          });
+        }
+
+        populateFilters();
+        filterData();
+      });
+    }
+
+    function populateFilters() {
+      const cities = [...new Set(sheetData.map(r => capitalize(r.City)))];
+      const months = [...new Set(sheetData.map(r => r.Month))];
+
+      fillDropdown('city', cities);
+      fillDropdown('month', months);
+
+      document.getElementById('city').onchange = filterData;
+      document.getElementById('month').onchange = filterData;
+    }
+
+    function fillDropdown(id, items) {
+      const dropdown = document.getElementById(id);
+      dropdown.innerHTML = '<option value="">All</option>';
+      items.forEach(item => {
+        dropdown.innerHTML += `<option value="${item}">${item}</option>`;
+      });
+    }
+
+    function filterData() {
+      const city = document.getElementById('city').value.toLowerCase();
+      const month = document.getElementById('month').value;
+
+      let filtered = sheetData;
+
+      if (city) filtered = filtered.filter(r => r.City === city);
+      if (month) filtered = filtered.filter(r => r.Month === month);
+
+      renderSummary(filtered);
+      renderTable(filtered);
+    }
+
+    function capitalize(str) {
+      if (!str) return "";
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    /* ---------------------------
+       SUMMARY CALCULATIONS
+    --------------------------- */
+    function calculateIncomeByCityMonth(data) {
+      const totals = {};
+
+      data.forEach(row => {
+        const city = row.City || "unknown";
+        const month = row.Month || "unknown";
+
+        const income = parseFloat(row.TotalIncome) || 0;
+        const active = parseFloat(row.ActiveBoxes) || 0;
+
+        const key = `${city}__${month}`;
+
+        if (!totals[key]) {
+          totals[key] = { totalIncome: 0, totalActive: 0 };
+        }
+
+        totals[key].totalIncome += income;
+        totals[key].totalActive += active;
+      });
+
+      return totals;
+    }
+
+    function formatCurrency(amount) {
+      return `$${amount.toFixed(2)}`;
+    }
+
+    /* ---------------------------
+       RENDER SUMMARY + CHARTS
+    --------------------------- */
+    function renderSummary(filtered) {
+      const totals = calculateIncomeByCityMonth(filtered);
+
+      let entries = Object.keys(totals).map(key => {
+        const [city, month] = key.split("__");
+
+        const totalIncome = totals[key].totalIncome;
+        const totalActive = totals[key].totalActive;
+
+        const avg = totalActive > 0 ? (totalIncome / totalActive) : 0;
+
+        return {
+          city: capitalize(city),
+          month,
+          totalIncome,
+          totalActive,
+          avg
+        };
+      });
+
+      entries.sort((a, b) => b.totalIncome - a.totalIncome);
+
+      drawCharts(entries);
+
+      let html = "<h3>Total & Average Income per City per Month (Per Active Box)</h3>";
+      html += "<table><tr><th>City</th><th>Month</th><th>Total Income</th><th>Total Active Boxes</th><th>Avg Income per Active Box</th></tr>";
+
+      entries.forEach(e => {
+        html += `
+          <tr>
+            <td>${e.city}</td>
+            <td>${e.month}</td>
+            <td>${formatCurrency(e.totalIncome)}</td>
+            <td>${e.totalActive}</td>
+            <td>${formatCurrency(e.avg)}</td>
+          </tr>
+        `;
+      });
+
+      html += "</table>";
+
+      document.getElementById("summary").innerHTML = html;
+    }
+
+    /* ---------------------------
+       CHARTS
+    --------------------------- */
+    function drawCharts(entries) {
+
+      // Chart 1: Total Income
+      const totalData = new google.visualization.DataTable();
+      totalData.addColumn('string', 'City');
+      totalData.addColumn('number', 'Total Income');
+
+      entries.forEach(e => {
+        totalData.addRow([`${e.city} (${e.month})`, e.totalIncome]);
+      });
+
+      const totalChart = new google.visualization.ColumnChart(
+        document.getElementById('chart_total_income')
+      );
+
+      totalChart.draw(totalData, {
+        title: 'Total Income per City per Month',
+        legend: { position: 'none' },
+        colors: ['#1a73e8']
+      });
+
+      // Chart 2: Avg Income per Active Box
+      const avgData = new google.visualization.DataTable();
+      avgData.addColumn('string', 'City');
+      avgData.addColumn('number', 'Avg Income per Active Box');
+
+      entries.forEach(e => {
+        avgData.addRow([`${e.city} (${e.month})`, e.avg]);
+      });
+
+      const avgChart = new google.visualization.ColumnChart(
+        document.getElementById('chart_avg_income')
+      );
+
+      avgChart.draw(avgData, {
+        title: 'Average Income per Active Box',
+        legend: { position: 'none' },
+        colors: ['#34a853']
+      });
+    }
+
+    /* ---------------------------
+       MAIN TABLE
+    --------------------------- */
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById('table').innerHTML = "<p>No data found.</p>";
+        return;
+      }
+
+      let html = "<table><tr>";
+
+      const columns = Object.keys(rows[0]).filter(c => c !== "Timestamp");
+
+      columns.forEach(col => html += `<th>${col}</th>`);
+      html += "</tr>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        columns.forEach(key => {
+          let value = r[key];
+
+          if (key === "TotalIncome" || key === "AvgIncomeActiveBox") {
+            const num = parseFloat(value);
+            value = isNaN(num) ? value : `$${num.toFixed(2)}`;
+          }
+
+          if (key === "City") value = capitalize(value);
+
+          html += `<td>${value}</td>`;
+        });
+        html += "</tr>";
+      });
+
+      html += "</table>";
+      document.getElementById('table').innerHTML = html;
+    }
+
+  </script>
+
+</body>
+</html>

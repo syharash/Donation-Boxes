@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dawateislami USA Donation Box Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Firebase (compat SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <!-- Google Charts -->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #020617;
+      --bg-card: #0f172a;
+      --bg-toolbar: #020617;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-soft: #16a34a;
+      --border-soft: #1f2937;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 40%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      background: var(--accent-soft);
+      color: #0b1120;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.35);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.12);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-toolbar);
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      border: 1px solid var(--border-soft);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.16s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: #111827;
+      color: var(--text-main);
+    }
+
+    .toolbar-btn.active {
+      background: var(--accent-soft);
+      color: #0b1120;
+      border-color: var(--accent-soft);
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+    }
+
+    .section {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .section h2 {
+      margin-bottom: 10px;
+    }
+
+    .panel {
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    th {
+      text-align: left;
+      background: #030712;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:nth-child(even) td {
+      background: #020617;
+    }
+
+    .scroll-panel {
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .mt-12 { margin-top: 12px; }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <!-- LOGIN -->
+    <div id="loginBox" class="card">
+      <h1>Dawateislami USA Donation Box Dashboard</h1>
+      <p class="subtitle">
+        Sign in with your Dawateislami Google account to view donation box analytics.
+      </p>
+      <button id="googleLoginBtn" class="btn">Sign in with Google</button>
+      <p class="muted mt-12">
+        After login, choose Charts, Income Table, or Raw Sheet Data from the toolbar.
+      </p>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="card" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <h1>Dawateislami USA Donation Box Dashboard</h1>
+          <p class="subtitle">
+            Use the toolbar to choose what you want to see.
+          </p>
+        </div>
+        <div id="userInfo" class="muted"></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button id="toolbarCharts" class="toolbar-btn">Charts</button>
+          <button id="toolbarIncome" class="toolbar-btn">Income Table</button>
+          <button id="toolbarSheet" class="toolbar-btn">Raw Sheet Data</button>
+        </div>
+        <button id="logoutBtn" class="btn btn-danger">Logout</button>
+      </div>
+
+      <!-- CHARTS SECTION -->
+      <div id="chartsSection" class="section">
+        <h2>Donation Box Charts</h2>
+        <div class="panel">
+          <div id="chartCityMonth" style="width:100%;height:280px;"></div>
+        </div>
+        <div class="panel">
+          <div id="chartPerBox" style="width:100%;height:280px;"></div>
+        </div>
+      </div>
+
+      <!-- INCOME TABLE SECTION -->
+      <div id="incomeSection" class="section">
+        <h2>Total & Average Income per City per Month</h2>
+        <div class="panel scroll-panel">
+          <table id="incomeTable">
+            <thead>
+              <tr>
+                <th>City</th>
+                <th>Month</th>
+                <th>Total Income</th>
+                <th>Average per Active Box</th>
+                <th>Active Boxes</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RAW SHEET SECTION -->
+      <div id="sheetSection" class="section">
+        <h2>Raw Google Sheet Data (Columns B–M)</h2>
+        <div class="panel scroll-panel">
+          <table id="sheetTable">
+            <thead>
+              <tr>
+                <th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th>
+                <th>H</th><th>I</th><th>J</th><th>K</th><th>L</th><th>M</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
+    authDomain: "donation-boxes-79ff0.firebaseapp.com",
+    projectId: "donation-boxes-79ff0",
+    storageBucket: "donation-boxes-79ff0.firebasestorage.app",
+    messagingSenderId: "655743529358",
+    appId: "1:655743529358:web:c13d1d02b9863f54b834df",
+    measurementId: "G-GMEDXC6PK8"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  google.charts.load("current", { packages: ["corechart"] });
+
+  let sheetData = [];
+  let incomeSummary = [];
+
+  function showSection(id) {
+    ["chartsSection", "incomeSection", "sheetSection"].forEach(sec => {
+      document.getElementById(sec).style.display = (sec === id ? "block" : "none");
+    });
+  }
+
+  function setActiveToolbar(id) {
+    ["toolbarCharts", "toolbarIncome", "toolbarSheet"].forEach(btn => {
+      document.getElementById(btn).classList.toggle("active", btn === id);
+    });
+  }
+
+  function loadDataFromSheet() {
+    const query = new google.visualization.Query(
+      "https://docs.google.com/spreadsheets/d/1sbYovp6dBjkB1x1PdRiK8XnALu67N4AJ_3GcRPLuRP4/gviz/tq?sheet=Sheet1&range=A:M"
+    );
+
+    query.send(response => {
+      const data = response.getDataTable();
+      sheetData = [];
+      incomeSummary = [];
+
+      for (let i = 0; i < data.getNumberOfRows(); i++) {
+        const row = [];
+        for (let c = 0; c < 13; c++) {
+          row.push(data.getValue(i, c));
+        }
+        sheetData.push(row);
+
+        incomeSummary.push({
+          city: row[2],
+          month: row[11],
+          total: row[7],
+          average: row[12],
+          activeBoxes: row[4]
+        });
+      }
+
+      drawCharts();
+      renderIncomeTable();
+      renderSheetTable();
+    });
+  }
+
+  function drawCharts() {
+    if (!incomeSummary.length) return;
+
+    const cityMonth = new google.visualization.DataTable();
+    cityMonth.addColumn("string", "City-Month");
+    cityMonth.addColumn("number", "Total Income");
+
+    incomeSummary.forEach(r => {
+      cityMonth.addRow([`${r.city} (${r.month})`, Number(r.total) || 0]);
+    });
+
+    new google.visualization.ColumnChart(
+      document.getElementById("chartCityMonth")
+    ).draw(cityMonth, {
+      backgroundColor: "transparent",
+      legendTextStyle: { color: "#e5e7eb" },
+      hAxis: { textStyle: { color: "#e5e7eb" } },
+      vAxis: { textStyle: { color: "#e5e7eb" } }
+    });
+
+    const perBox = new google.visualization.DataTable();
+    perBox.addColumn("string", "City");
+    perBox.addColumn("number", "Avg Income");
+
+    incomeSummary.forEach(r => {
+      perBox.addRow([r.city, Number(r.average) || 0]);
+    });
+
+    new google.visualization.ColumnChart(
+      document.getElementById("chartPerBox")
+    ).draw(perBox, {
+      backgroundColor: "transparent",
+      legendTextStyle: { color: "#e5e7eb" },
+      hAxis: { textStyle: { color: "#e5e7eb" } },
+      vAxis: { textStyle: { color: "#e5e7eb" } }
+    });
+  }
+
+  function renderIncomeTable() {
+    const tbody = document.querySelector("#incomeTable tbody");
+    tbody.innerHTML = "";
+    if (!incomeSummary.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="muted">No income data loaded.</td></tr>`;
+      return;
+    }
+    incomeSummary.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${r.city}</td>
+          <td>${r.month}</td>
+          <td>${r.total}</td>
+          <td>${r.average}</td>
+          <td>${r.activeBoxes}</td>
+        </tr>`;
+    });
+  }
+
+  function renderSheetTable() {
+    const tbody = document.querySelector("#sheetTable tbody");
+    tbody.innerHTML = "";
+    if (!sheetData.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="muted">No raw sheet data loaded.</td></tr>`;
+      return;
+    }
+    sheetData.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          ${r.slice(1, 13).map(v => `<td>${v ?? ""}</td>`).join("")}
+        </tr>`;
+    });
+  }
+
+  window.onload = () => {
+    const loginBox = document.getElementById("loginBox");
+    const dashboard = document.getElementById("dashboard");
+    const userInfo = document.getElementById("userInfo");
+
+    document.getElementById("googleLoginBtn").onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).then(result => {
+        loginBox.style.display = "none";
+        dashboard.style.display = "block";
+        userInfo.textContent = result.user?.email || "";
+        google.charts.setOnLoadCallback(loadDataFromSheet);
+      }).catch(err => {
+        alert("Login failed: " + err.message);
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = () => {
+      auth.signOut().then(() => {
+        dashboard.style.display = "none";
+        loginBox.style.display = "block";
+        userInfo.textContent = "";
+        showSection(null);
+        setActiveToolbar(null);
+      });
+    };
+
+    document.getElementById("toolbarCharts").onclick = () => {
+      setActiveToolbar("toolbarCharts");
+      showSection("chartsSection");
+      drawCharts();
+    };
+
+    document.getElementById("toolbarIncome").onclick = () => {
+      setActiveToolbar("toolbarIncome");
+      showSection("incomeSection");
+      renderIncomeTable();
+    };
+
+    document.getElementById("toolbarSheet").onclick = () => {
+      setActiveToolbar("toolbarSheet");
+      showSection("sheetSection");
+      renderSheetTable();
+    };
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginBox.style.display = "none";
+        dashboard.style.display = "block";
+        userInfo.textContent = user.email || "";
+        google.charts.setOnLoadCallback(loadDataFromSheet);
+      } else {
+        dashboard.style.display = "none";
+        loginBox.style.display = "block";
+        userInfo.textContent = "";
+        showSection(null);
+        setActiveToolbar(null);
+      }
+    });
+  };
+</script>
+
+</body>
+</html>

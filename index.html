@@ -204,7 +204,7 @@
     <div id="loginBox" class="card">
       <h1>Dawateislami USA Donation Box Dashboard</h1>
       <p class="subtitle">
-        Sign in with your Dawateislami Google account to view donation box analytics.
+        Sign in with your Google account to view donation box analytics.
       </p>
       <button id="googleLoginBtn" class="btn">Sign in with Google</button>
       <p class="muted mt-12">
@@ -315,8 +315,8 @@
 
   function loadDataFromSheet() {
     const query = new google.visualization.Query(
-      "https://docs.google.com/spreadsheets/d/1sbYovp6dBjkB1x1PdRiK8XnALu67N4AJ_3GcRPLuRP4/gviz/tq?sheet=Sheet1&range=A:M"
-    );
+        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
+      );
 
     query.send(response => {
       const data = response.getDataTable();

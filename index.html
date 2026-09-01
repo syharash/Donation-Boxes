@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dawateislami USA Donation Box Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Firebase (compat SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <!-- Google Charts -->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #111827;
+      --bg-card: #1f2937;
+      --bg-toolbar: #0f172a;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-soft: #16a34a;
+      --border-soft: #374151;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 40%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      background: var(--accent-soft);
+      color: #0b1120;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.35);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-main);
+      border-color: var(--border-soft);
+    }
+
+    .btn-outline:hover {
+      background: #111827;
+      border-color: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.12);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+    }
+
+    .login-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--accent);
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-toolbar);
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      border: 1px solid var(--border-soft);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-title {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-right: 10px;
+    }
+
+    .toolbar-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.16s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: #111827;
+      color: var(--text-main);
+    }
+
+    .toolbar-btn.active {
+      background: var(--accent-soft);
+      color: #0b1120;
+      border-color: var(--accent-soft);
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+    }
+
+    .section {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .section-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .panel {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      padding: 16px;
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    th {
+      text-align: left;
+      background: #020617;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:nth-child(even) td {
+      background: #030712;
+    }
+
+    .scroll-panel {
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- LOGIN CARD -->
+    <div id="loginBox" class="card">
+      <div class="badge">
+        <span>Secure Access</span>
+      </div>
+      <div class="login-header">
+        <div>
+          <h1>Dawateislami USA Donation Box Dashboard</h1>
+          <h2>Madani Donation Boxes — City & Month Analytics</h2>
+        </div>
+      </div>
+      <p class="subtitle">
+        Sign in with your Dawateislami Google account to view charts, income summaries, and raw box data.
+      </p>
+      <button id="googleLoginBtn" class="btn">
+        Sign in with Google
+      </button>
+      <p class="muted mt-12">
+        Access is restricted. Only authenticated users can view donation box analytics and raw data.
+      </p>
+    </div>
+
+    <!-- DASHBOARD CARD -->
+    <div id="dashboard" class="card" style="display:none;">
+      <div class="section-header">
+        <div>
+          <h1>Dawateislami USA Donation Box Dashboard</h1>
+          <p class="subtitle">
+            Choose what you want to see: charts, income summary, or raw Google Sheet data.
+          </p>
+        </div>
+        <div class="muted" id="userInfo"></div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-title">View:</span>
+          <button id="toolbarCharts" class="toolbar-btn">Charts</button>
+          <button id="toolbarIncome" class="toolbar-btn">Income Table</button>
+          <button id="toolbarSheet" class="toolbar-btn">Raw Sheet Data</button>
+        </div>
+        <div class="toolbar-right">
+          <button id="logoutBtn" class="btn btn-danger">Logout</button>
+        </div>
+      </div>
+
+      <!-- SECTIONS -->
+
+      <!-- CHARTS SECTION -->
+      <div id="chartsSection" class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Donation Box Charts</div>
+            <div class="section-subtitle">
+              Visual overview of income per city, per month, and per active box.
+            </div>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="panel">
+            <div class="panel-title">Income per City / Month</div>
+            <div id="chartCityMonth" style="width:100%;height:280px;"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Income per Active Box</div>
+            <div id="chartPerBox" style="width:100%;height:280px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INCOME TABLE SECTION -->
+      <div id="incomeSection" class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Total & Average Income per City per Month (per Active Box)</div>
+            <div class="section-subtitle">
+              Aggregated view of total and average income across cities and months.
+            </div>
+          </div>
+        </div>
+        <div class="panel scroll-panel mt-8">
+          <table id="incomeTable">
+            <thead>
+              <tr>
+                <th>City</th>
+                <th>Month</th>
+                <th>Total Income</th>
+                <th>Average per Active Box</th>
+                <th>Active Boxes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Filled by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RAW SHEET DATA SECTION -->
+      <div id="sheetSection" class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Raw Google Sheet Data (Columns B–M)</div>
+            <div class="section-subtitle">
+              Direct view of the underlying data powering the dashboard.
+            </div>
+          </div>
+        </div>
+        <div class="panel scroll-panel mt-8">
+          <table id="sheetTable">
+            <thead>
+              <tr>
+                <th>Column B</th>
+                <th>Column C</th>
+                <th>Column D</th>
+                <th>Column E</th>
+                <th>Column F</th>
+                <th>Column G</th>
+                <th>Column H</th>
+                <th>Column I</th>
+                <th>Column J</th>
+                <th>Column K</th>
+                <th>Column L</th>
+                <th>Column M</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Filled by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Firebase config (use your existing values) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
+      authDomain: "donation-boxes-79ff0.firebaseapp.com",
+      projectId: "donation-boxes-79ff0",
+      storageBucket: "donation-boxes-79ff0.firebasestorage.app",
+      messagingSenderId: "655743529358",
+      appId: "1:655743529358:web:c13d1d02b9863f54b834df",
+      measurementId: "G-GMEDXC6PK8"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // --- Google Charts loader ---
+    google.charts.load("current", { packages: ["corechart", "table"] });
+
+    // Global data store (replace with your existing loadData logic)
+    let sheetData = []; // raw rows
+    let incomeSummary = []; // aggregated for income table
+
+    function setActiveToolbar(id) {
+      ["toolbarCharts", "toolbarIncome", "toolbarSheet"].forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.classList.toggle("active", btnId === id);
+      });
+    }
+
+    function showSection(sectionId) {
+      ["chartsSection", "incomeSection", "sheetSection"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = (id === sectionId) ? "block" : "none";
+      });
+    }
+
+    // --- Placeholder: load data from your Google Sheet ---
+    // You can replace this with your existing loadData() implementation.
+    function loadDataFromSheet() {
+      // TODO: integrate your real Google Sheet fetching logic here.
+      // For now, this is just a stub so the structure is ready.
+      // After you plug in your existing code, call:
+      //   sheetData = ...; incomeSummary = ...;
+      //   drawCharts();
+      //   renderIncomeTable();
+      //   renderSheetTable();
+    }
+
+    // --- Charts rendering (use your existing logic if you have it) ---
+    function drawCharts() {
+      if (!sheetData || sheetData.length === 0) return;
+
+      // Example chart data; replace with your real aggregation
+      const cityMonthData = new google.visualization.DataTable();
+      cityMonthData.addColumn("string", "City / Month");
+      cityMonthData.addColumn("number", "Total Income");
+
+      // Fill with your aggregated data
+      // cityMonthData.addRows([...]);
+
+      const perBoxData = new google.visualization.DataTable();
+      perBoxData.addColumn("string", "Box");
+      perBoxData.addColumn("number", "Income");
+
+      // Fill with your per-box data
+      // perBoxData.addRows([...]);
+
+      const cityMonthChart = new google.visualization.ColumnChart(
+        document.getElementById("chartCityMonth")
+      );
+      cityMonthChart.draw(cityMonthData, {
+        backgroundColor: "transparent",
+        legendTextStyle: { color: "#e5e7eb" },
+        hAxis: { textStyle: { color: "#e5e7eb" } },
+        vAxis: { textStyle: { color: "#e5e7eb" } },
+        titleTextStyle: { color: "#e5e7eb" }
+      });
+
+      const perBoxChart = new google.visualization.ColumnChart(
+        document.getElementById("chartPerBox")
+      );
+      perBoxChart.draw(perBoxData, {
+        backgroundColor: "transparent",
+        legendTextStyle: { color: "#e5e7eb" },
+        hAxis: { textStyle: { color: "#e5e7eb" } },
+        vAxis: { textStyle: { color: "#e5e7eb" } },
+        titleTextStyle: { color: "#e5e7eb" }
+      });
+    }
+
+    // --- Income table rendering ---
+    function renderIncomeTable() {
+      const tbody = document.querySelector("#incomeTable tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      if (!incomeSummary || incomeSummary.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.className = "center muted";
+        td.textContent = "No income summary data loaded yet.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      incomeSummary.forEach(row => {
+        const tr = document.createElement("tr");
+        ["city", "month", "total", "average", "activeBoxes"].forEach(key => {
+          const td = document.createElement("td");
+          td.textContent = row[key];
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- Raw sheet table rendering ---
+    function renderSheetTable() {
+      const tbody = document.querySelector("#sheetTable tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      if (!sheetData || sheetData.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 12;
+        td.className = "center muted";
+        td.textContent = "No raw sheet data loaded yet.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      sheetData.forEach(row => {
+        const tr = document.createElement("tr");
+        // Assuming row is an array and B–M are indices 1–12
+        for (let i = 1; i <= 12; i++) {
+          const td = document.createElement("td");
+          td.textContent = row[i] ?? "";
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.onload = function () {
+      const loginBox = document.getElementById("loginBox");
+      const dashboard = document.getElementById("dashboard");
+      const userInfo = document.getElementById("userInfo");
+
+      const loginBtn = document.getElementById("googleLoginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      const toolbarCharts = document.getElementById("toolbarCharts");
+      const toolbarIncome = document.getElementById("toolbarIncome");
+      const toolbarSheet = document.getElementById("toolbarSheet");
+
+      loginBtn.onclick = () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider)
+          .then(result => {
+            loginBox.style.display = "none";
+            dashboard.style.display = "block";
+
+            if (result.user) {
+              userInfo.textContent = result.user.email || "Signed in";
+            }
+
+            // Load data once after login
+            google.charts.setOnLoadCallback(() => {
+              loadDataFromSheet();
+              // If you already have a working loadData(), call it here instead.
+            });
+          })
+          .catch(err => {
+            alert("Login failed: " + err.message);
+          });
+      };
+
+      logoutBtn.onclick = () => {
+        auth.signOut().then(() => {
+          dashboard.style.display = "none";
+          loginBox.style.display = "block";
+          userInfo.textContent = "";
+          showSection(null);
+          setActiveToolbar(null);
+        });
+      };
+
+      toolbarCharts.onclick = () => {
+        setActiveToolbar("toolbarCharts");
+        showSection("chartsSection");
+        drawCharts();
+      };
+
+      toolbarIncome.onclick = () => {
+        setActiveToolbar("toolbarIncome");
+        showSection("incomeSection");
+        renderIncomeTable();
+      };
+
+      toolbarSheet.onclick = () => {
+        setActiveToolbar("toolbarSheet");
+        showSection("sheetSection");
+        renderSheetTable();
+      };
+
+      // Optional: handle auth state if user refreshes while logged in
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          loginBox.style.display = "none";
+          dashboard.style.display = "block";
+          userInfo.textContent = user.email || "Signed in";
+          google.charts.setOnLoadCallback(() => {
+            loadDataFromSheet();
+          });
+        } else {
+          dashboard.style.display = "none";
+          loginBox.style.display = "block";
+          userInfo.textContent = "";
+          showSection(null);
+          setActiveToolbar(null);
+        }
+      });
+    };
+  </script>
+</body>
+</html>

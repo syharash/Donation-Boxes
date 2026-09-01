@@ -113,12 +113,14 @@
       padding: 8px 12px;
       margin-bottom: 18px;
       border: 1px solid var(--border-soft);
+      gap: 8px;
     }
 
     .toolbar-left {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .toolbar-btn {
@@ -144,13 +146,23 @@
       box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
     }
 
+    .filter-select, .filter-input {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #020617;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      min-width: 120px;
+    }
+
+    .filter-input {
+      min-width: 180px;
+    }
+
     .section {
       display: none;
       margin-top: 12px;
-    }
-
-    .section h2 {
-      margin-bottom: 10px;
     }
 
     .panel {
@@ -178,6 +190,7 @@
       background: #030712;
       position: sticky;
       top: 0;
+      cursor: pointer;
     }
 
     tr:nth-child(even) td {
@@ -194,7 +207,9 @@
       font-size: 0.8rem;
     }
 
-    .mt-12 { margin-top: 12px; }
+    td.num, th.num {
+      text-align: center;
+    }
   </style>
 </head>
 
@@ -204,11 +219,11 @@
     <div id="loginBox" class="card">
       <h1>Dawateislami USA Donation Box Dashboard</h1>
       <p class="subtitle">
-        Sign in with your Google account to view donation box analytics.
+        Sign in with your Dawateislami Google account to view donation box analytics.
       </p>
       <button id="googleLoginBtn" class="btn">Sign in with Google</button>
-      <p class="muted mt-12">
-        After login, choose Charts, Income Table, or Raw Sheet Data from the toolbar.
+      <p class="muted" style="margin-top:12px;">
+        After login, use the toolbar to switch between Charts, Income Table, and Raw Sheet Data.
       </p>
     </div>
 
@@ -218,7 +233,7 @@
         <div>
           <h1>Dawateislami USA Donation Box Dashboard</h1>
           <p class="subtitle">
-            Use the toolbar to choose what you want to see.
+            Use the toolbar to choose what you want to see and filter.
           </p>
         </div>
         <div id="userInfo" class="muted"></div>
@@ -229,6 +244,20 @@
           <button id="toolbarCharts" class="toolbar-btn">Charts</button>
           <button id="toolbarIncome" class="toolbar-btn">Income Table</button>
           <button id="toolbarSheet" class="toolbar-btn">Raw Sheet Data</button>
+
+          <select id="filterCity" class="filter-select">
+            <option value="">City: All</option>
+          </select>
+
+          <select id="filterMonth" class="filter-select">
+            <option value="">Month: All</option>
+          </select>
+
+          <select id="filterName" class="filter-select">
+            <option value="">Name: All</option>
+          </select>
+
+          <input id="searchBox" class="filter-input" type="text" placeholder="Search..." />
         </div>
         <button id="logoutBtn" class="btn btn-danger">Logout</button>
       </div>
@@ -251,11 +280,11 @@
           <table id="incomeTable">
             <thead>
               <tr>
-                <th>City</th>
-                <th>Month</th>
-                <th>Total Income</th>
-                <th>Average per Active Box</th>
-                <th>Active Boxes</th>
+                <th class="num">City</th>
+                <th class="num">Month</th>
+                <th class="num">Total Income ($)</th>
+                <th class="num">Avg Income / Active Box ($)</th>
+                <th class="num">Active Boxes</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -270,8 +299,18 @@
           <table id="sheetTable">
             <thead>
               <tr>
-                <th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th>
-                <th>H</th><th>I</th><th>J</th><th>K</th><th>L</th><th>M</th>
+                <th>Email Address</th>
+                <th>City Name</th>
+                <th class="num">Total Boxes</th>
+                <th class="num">Active Boxes</th>
+                <th class="num">Deactive Boxes</th>
+                <th class="num">Boxes Add</th>
+                <th class="num">Total Current Boxes</th>
+                <th class="num">Total Income ($)</th>
+                <th class="num">Boxes In Hand</th>
+                <th>Name</th>
+                <th>Month</th>
+                <th class="num">Avg Income / Active Box ($)</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -298,8 +337,10 @@
 
   google.charts.load("current", { packages: ["corechart"] });
 
-  let sheetData = [];
-  let incomeSummary = [];
+  let sheetData = [];       // raw rows (A–M)
+  let filteredData = [];    // rows after filters/search
+  let incomeSummary = [];   // aggregated for income table
+  let sortState = { table: null, dir: 1 }; // for raw sheet sorting
 
   function showSection(id) {
     ["chartsSection", "incomeSection", "sheetSection"].forEach(sec => {
@@ -315,8 +356,8 @@
 
   function loadDataFromSheet() {
     const query = new google.visualization.Query(
-        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
-      );
+      "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
+    );
 
     query.send(response => {
       const data = response.getDataTable();
@@ -330,19 +371,76 @@
         }
         sheetData.push(row);
 
+        // income summary: city (C), month (L), total income (I), avg income per active box (M), active boxes (E)
         incomeSummary.push({
           city: row[2],
           month: row[11],
-          total: row[7],
-          average: row[12],
-          activeBoxes: row[4]
+          total: Number(row[8] ?? 0),
+          average: Number(row[12] ?? 0),
+          activeBoxes: Number(row[4] ?? 0)
         });
       }
 
+      buildFilterOptions();
+      applyFiltersAndRender();
       drawCharts();
       renderIncomeTable();
-      renderSheetTable();
     });
+  }
+
+  function buildFilterOptions() {
+    const citySet = new Set();
+    const monthSet = new Set();
+    const nameSet = new Set();
+
+    sheetData.forEach(r => {
+      if (r[2]) citySet.add(r[2]);   // City Name (C)
+      if (r[11]) monthSet.add(r[11]); // Month (L)
+      if (r[10]) nameSet.add(r[10]);  // Name (K)
+    });
+
+    const citySelect = document.getElementById("filterCity");
+    const monthSelect = document.getElementById("filterMonth");
+    const nameSelect = document.getElementById("filterName");
+
+    citySelect.innerHTML = `<option value="">City: All</option>`;
+    monthSelect.innerHTML = `<option value="">Month: All</option>`;
+    nameSelect.innerHTML = `<option value="">Name: All</option>`;
+
+    Array.from(citySet).sort().forEach(v => {
+      citySelect.innerHTML += `<option value="${v}">${v}</option>`;
+    });
+    Array.from(monthSet).sort().forEach(v => {
+      monthSelect.innerHTML += `<option value="${v}">${v}</option>`;
+    });
+    Array.from(nameSet).sort().forEach(v => {
+      nameSelect.innerHTML += `<option value="${v}">${v}</option>`;
+    });
+  }
+
+  function applyFiltersAndRender() {
+    const city = document.getElementById("filterCity").value;
+    const month = document.getElementById("filterMonth").value;
+    const name = document.getElementById("filterName").value;
+    const search = document.getElementById("searchBox").value.trim().toLowerCase();
+
+    filteredData = sheetData.filter(r => {
+      if (city && r[2] !== city) return false;
+      if (month && r[11] !== month) return false;
+      if (name && r[10] !== name) return false;
+
+      if (search) {
+        const text = [
+          r[1], r[2], r[3], r[4], r[5], r[6],
+          r[7], r[8], r[9], r[10], r[11], r[12]
+        ].map(v => (v ?? "").toString().toLowerCase()).join(" ");
+        if (!text.includes(search)) return false;
+      }
+
+      return true;
+    });
+
+    renderSheetTable();
   }
 
   function drawCharts() {
@@ -353,7 +451,7 @@
     cityMonth.addColumn("number", "Total Income");
 
     incomeSummary.forEach(r => {
-      cityMonth.addRow([`${r.city} (${r.month})`, Number(r.total) || 0]);
+      cityMonth.addRow([`${r.city} (${r.month})`, r.total || 0]);
     });
 
     new google.visualization.ColumnChart(
@@ -367,10 +465,10 @@
 
     const perBox = new google.visualization.DataTable();
     perBox.addColumn("string", "City");
-    perBox.addColumn("number", "Avg Income");
+    perBox.addColumn("number", "Avg Income / Active Box");
 
     incomeSummary.forEach(r => {
-      perBox.addRow([r.city, Number(r.average) || 0]);
+      perBox.addRow([r.city, r.average || 0]);
     });
 
     new google.visualization.ColumnChart(
@@ -393,11 +491,11 @@
     incomeSummary.forEach(r => {
       tbody.innerHTML += `
         <tr>
-          <td>${r.city}</td>
-          <td>${r.month}</td>
-          <td>${r.total}</td>
-          <td>${r.average}</td>
-          <td>${r.activeBoxes}</td>
+          <td class="num">${r.city}</td>
+          <td class="num">${r.month}</td>
+          <td class="num">$${r.total.toFixed(2)}</td>
+          <td class="num">$${r.average.toFixed(2)}</td>
+          <td class="num">${r.activeBoxes}</td>
         </tr>`;
     });
   }
@@ -405,16 +503,59 @@
   function renderSheetTable() {
     const tbody = document.querySelector("#sheetTable tbody");
     tbody.innerHTML = "";
-    if (!sheetData.length) {
+    const rows = filteredData.length ? filteredData : sheetData;
+
+    if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="12" class="muted">No raw sheet data loaded.</td></tr>`;
       return;
     }
-    sheetData.forEach(r => {
-      tbody.innerHTML += `
+
+    rows.forEach(r => {
+      const rowHTML = `
         <tr>
-          ${r.slice(1, 13).map(v => `<td>${v ?? ""}</td>`).join("")}
-        </tr>`;
+          <td>${r[1] ?? ""}</td>  <!-- Email -->
+          <td>${r[2] ?? ""}</td>  <!-- City -->
+          <td class="num">${r[3] ?? ""}</td>  <!-- Total Boxes -->
+          <td class="num">${r[4] ?? ""}</td>  <!-- Active Boxes -->
+          <td class="num">${r[5] ?? ""}</td>  <!-- Deactive Boxes -->
+          <td class="num">${r[6] ?? ""}</td>  <!-- Boxes Add -->
+          <td class="num">${r[7] ?? ""}</td>  <!-- Total Current Boxes -->
+          <td class="num">$${Number(r[8] ?? 0).toFixed(2)}</td>  <!-- Total Income -->
+          <td class="num">${r[9] ?? ""}</td>  <!-- Boxes In Hand -->
+          <td>${r[10] ?? ""}</td> <!-- Name -->
+          <td>${r[11] ?? ""}</td> <!-- Month -->
+          <td class="num">$${Number(r[12] ?? 0).toFixed(2)}</td> <!-- Avg Income per Active Box -->
+        </tr>
+      `;
+      tbody.innerHTML += rowHTML;
     });
+  }
+
+  function sortSheetTableByColumn(index, numeric = false) {
+    const rows = filteredData.length ? filteredData : sheetData;
+    const dir = sortState.table === index ? -sortState.dir : 1;
+    sortState = { table: index, dir };
+
+    rows.sort((a, b) => {
+      const va = a[index];
+      const vb = b[index];
+      if (numeric) {
+        const na = Number(va ?? 0);
+        const nb = Number(vb ?? 0);
+        return dir * (na - nb);
+      } else {
+        const sa = (va ?? "").toString().toLowerCase();
+        const sb = (vb ?? "").toString().toLowerCase();
+        if (sa < sb) return -dir;
+        if (sa > sb) return dir;
+        return 0;
+      }
+    });
+
+    if (filteredData.length) filteredData = rows;
+    else sheetData = rows;
+
+    renderSheetTable();
   }
 
   window.onload = () => {
@@ -461,6 +602,23 @@
       showSection("sheetSection");
       renderSheetTable();
     };
+
+    document.getElementById("filterCity").onchange =
+    document.getElementById("filterMonth").onchange =
+    document.getElementById("filterName").onchange =
+    document.getElementById("searchBox").oninput = applyFiltersAndRender;
+
+    // Sorting on raw sheet headers
+    const sheetHeaders = document.querySelectorAll("#sheetTable thead th");
+    sheetHeaders.forEach((th, idx) => {
+      th.addEventListener("click", () => {
+        const numericCols = [2,3,4,5,6,7,8,9,11]; // indices in displayed B–M (0-based in table)
+        const colMap = [1,2,3,4,5,6,7,8,9,10,11,12]; // actual sheet indices
+        const sheetIndex = colMap[idx];
+        const isNumeric = numericCols.includes(idx);
+        sortSheetTableByColumn(sheetIndex, isNumeric);
+      });
+    });
 
     auth.onAuthStateChanged(user => {
       if (user) {

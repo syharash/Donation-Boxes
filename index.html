@@ -190,9 +190,9 @@
   }
 
   function loadDataFromSheet() {
-    const query = new google.visualization.Query(
-      "https://docs.google.com/spreadsheets/d/1sbYovp6dBjkB1x1PdRiK8XnALu67N4AJ_3GcRPLuRP4/gviz/tq?sheet=Sheet1&range=A:M"
-    );
+     const query = new google.visualization.Query(
+        "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
+      );
 
     query.send(response => {
       const data = response.getDataTable();

@@ -210,6 +210,11 @@
     td.num, th.num {
       text-align: center;
     }
+
+    td.nowrap {
+      white-space: nowrap;
+    }
+
   </style>
 </head>
 
@@ -511,22 +516,23 @@
     }
 
     rows.forEach(r => {
-      const rowHTML = `
-        <tr>
-          <td>${r[1] ?? ""}</td>  <!-- Email -->
-          <td>${r[2] ?? ""}</td>  <!-- City -->
-          <td class="num">${r[3] ?? ""}</td>  <!-- Total Boxes -->
-          <td class="num">${r[4] ?? ""}</td>  <!-- Active Boxes -->
-          <td class="num">${r[5] ?? ""}</td>  <!-- Deactive Boxes -->
-          <td class="num">${r[6] ?? ""}</td>  <!-- Boxes Add -->
-          <td class="num">${r[7] ?? ""}</td>  <!-- Total Current Boxes -->
-          <td class="num">$${Number(r[8] ?? 0).toFixed(2)}</td>  <!-- Total Income -->
-          <td class="num">${r[9] ?? ""}</td>  <!-- Boxes In Hand -->
-          <td>${r[10] ?? ""}</td> <!-- Name -->
-          <td>${r[11] ?? ""}</td> <!-- Month -->
-          <td class="num">$${Number(r[12] ?? 0).toFixed(2)}</td> <!-- Avg Income per Active Box -->
-        </tr>
-      `;
+    const rowHTML = `
+      <tr>
+        <td>${r[1] ?? ""}</td>
+        <td>${r[2] ?? ""}</td>
+        <td class="num">${r[3] ?? ""}</td>
+        <td class="num">${r[4] ?? ""}</td>
+        <td class="num">${r[5] ?? ""}</td>
+        <td class="num">${r[6] ?? ""}</td>
+        <td class="num">${r[7] ?? ""}</td>
+        <td class="num">$${Number(r[8] ?? 0).toFixed(2)}</td>
+        <td class="num">${r[9] ?? ""}</td>
+        <td class="nowrap">${r[10] ?? ""}</td> <!-- Name (NO WRAP) -->
+        <td>${r[11] ?? ""}</td>
+        <td class="num">$${Number(r[12] ?? 0).toFixed(2)}</td>
+    </tr>
+  `;
+
       tbody.innerHTML += rowHTML;
     });
   }

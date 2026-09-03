@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dawateislami USA Donation Box Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Firebase (compat SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <!-- Google Charts -->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #020617;
+      --bg-card: #0f172a;
+      --bg-toolbar: #020617;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-soft: #16a34a;
+      --border-soft: #1f2937;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 40%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    #app {
+      width: 100%;
+      max-width: none;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+      padding: 24px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      background: var(--accent-soft);
+      color: #0b1120;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.35);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.12);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-toolbar);
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      border: 1px solid var(--border-soft);
+      gap: 8px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.16s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: #111827;
+      color: var(--text-main);
+    }
+
+    .toolbar-btn.active {
+      background: var(--accent-soft);
+      color: #0b1120;
+      border-color: var(--accent-soft);
+      box-shadow: 0 6px 16px rgba(34, 197, 94, 0.35);
+    }
+
+    .filter-select, .filter-input {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #020617;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      min-width: 120px;
+    }
+
+    .filter-input {
+      min-width: 220px;
+    }
+
+    .section {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .panel {
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      table-layout: fixed;
+    }
+
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1f2937;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    th {
+      text-align: left;
+      background: #030712;
+      position: sticky;
+      top: 0;
+      cursor: pointer;
+    }
+
+    tr:nth-child(even) td {
+      background: #020617;
+    }
+
+    .scroll-panel {
+      max-height: 72vh;
+      overflow: auto;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    td.num, th.num {
+      text-align: center;
+    }
+
+    /* Make Name column not wrap but show ellipsis if too long */
+    td.name, th.name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 900px) {
+      .filter-input { min-width: 140px; }
+      th, td { max-width: 140px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <!-- LOGIN -->
+    <div id="loginBox" class="card">
+      <h1>Dawateislami USA Donation Box Dashboard</h1>
+      <p class="subtitle">
+        Sign in with your Dawateislami Google account to view donation box analytics.
+      </p>
+      <button id="googleLoginBtn" class="btn">Sign in with Google</button>
+      <p class="muted" style="margin-top:12px;">
+        After login, use the toolbar to switch between Charts, Income Table, and Raw Sheet Data.
+      </p>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="card" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <h1>Dawateislami USA Donation Box Dashboard</h1>
+          <p class="subtitle">
+            Use the toolbar to choose what you want to see and filter.
+          </p>
+        </div>
+        <div id="userInfo" class="muted"></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button id="toolbarCharts" class="toolbar-btn">Charts</button>
+          <button id="toolbarIncome" class="toolbar-btn">Income Table</button>
+          <button id="toolbarSheet" class="toolbar-btn">Raw Sheet Data</button>
+
+          <select id="filterCity" class="filter-select">
+            <option value="">City: All</option>
+          </select>
+
+          <select id="filterMonth" class="filter-select">
+            <option value="">Month: All</option>
+          </select>
+
+          <select id="filterName" class="filter-select">
+            <option value="">Name: All</option>
+          </select>
+
+          <input id="searchBox" class="filter-input" type="text" placeholder="Search..." />
+        </div>
+        <button id="logoutBtn" class="btn btn-danger">Logout</button>
+      </div>
+
+      <!-- CHARTS SECTION -->
+      <div id="chartsSection" class="section">
+        <h2>Donation Box Charts</h2>
+        <div class="panel">
+          <div id="chartCityMonth" style="width:100%;height:360px;"></div>
+        </div>
+        <div class="panel">
+          <div id="chartPerBox" style="width:100%;height:360px;"></div>
+        </div>
+      </div>
+
+      <!-- INCOME TABLE SECTION -->
+      <div id="incomeSection" class="section">
+        <h2>Total & Average Income per City per Month</h2>
+        <div class="panel scroll-panel">
+          <table id="incomeTable">
+            <thead>
+              <tr>
+                <th class="num">City</th>
+                <th class="num">Month</th>
+                <th class="num">Total Income ($)</th>
+                <th class="num">Avg Income / Active Box ($)</th>
+                <th class="num">Active Boxes</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RAW SHEET SECTION -->
+      <div id="sheetSection" class="section">
+        <h2>Raw Google Sheet Data (Columns B–M)</h2>
+        <div class="panel scroll-panel">
+          <table id="sheetTable">
+            <thead>
+              <tr>
+                <th>Email Address</th>
+                <th>City Name</th>
+                <th class="num">Total Boxes</th>
+                <th class="num">Active Boxes</th>
+                <th class="num">Deactive Boxes</th>
+                <th class="num">Boxes Add</th>
+                <th class="num">Total Current Boxes</th>
+                <th class="num">Total Income ($)</th>
+                <th class="num">Boxes In Hand</th>
+                <th class="name">Name</th>
+                <th>Month</th>
+                <th class="num">Avg Income / Active Box ($)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAiBGgA29BzD3CESWM2m4inxaWssA8fOZE",
+    authDomain: "donation-boxes-79ff0.firebaseapp.com",
+    projectId: "donation-boxes-79ff0",
+    storageBucket: "donation-boxes-79ff0.firebasestorage.app",
+    messagingSenderId: "655743529358",
+    appId: "1:655743529358:web:c13d1d02b9863f54b834df",
+    measurementId: "G-GMEDXC6PK8"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  google.charts.load("current", { packages: ["corechart"] });
+
+  let sheetData = [];       // raw rows (A–M)
+  let filteredData = [];    // rows after filters/search
+  let sortState = { table: null, dir: 1 }; // for raw sheet sorting
+
+  function showSection(id) {
+    ["chartsSection", "incomeSection", "sheetSection"].forEach(sec => {
+      document.getElementById(sec).style.display = (sec === id ? "block" : "none");
+    });
+  }
+
+  function setActiveToolbar(id) {
+    ["toolbarCharts", "toolbarIncome", "toolbarSheet"].forEach(btn => {
+      document.getElementById(btn).classList.toggle("active", btn === id);
+    });
+  }
+
+  function loadDataFromSheet() {
+    const query = new google.visualization.Query(
+      "https://docs.google.com/spreadsheets/d/1sbYovp6RHpBXd1lfz0iRXxR9wUAo7NuW_JGcRPUMQr0/gviz/tq?sheet=Sheet1&range=A:M"
+    );
+
+    query.send(response => {
+      const data = response.getDataTable();
+      sheetData = [];
+
+      for (let i = 0; i < data.getNumberOfRows(); i++) {
+        const row = [];
+        for (let c = 0; c < 13; c++) {
+          row.push(data.getValue(i, c));
+        }
+
+        // Compute Month from Timestamp (A) if Month (L / index 11) is blank
+        if ((!row[11] || row[11] === "") && row[0]) {
+          const ts = new Date(row[0]);
+          if (!isNaN(ts.getTime())) {
+            const monthName = ts.toLocaleString("default", { month: "long" });
+            const year = ts.getFullYear();
+            row[11] = `${monthName} ${year}`;
+          }
+        }
+
+        sheetData.push(row);
+      }
+
+      buildFilterOptions();
+      applyFiltersAndRender();
+      drawCharts(); // charts will use aggregated monthly data
+      renderIncomeTable();
+    });
+  }
+
+  function buildFilterOptions() {
+    const citySet = new Set();
+    const monthSet = new Set();
+    const nameSet = new Set();
+
+    sheetData.forEach(r => {
+      if (r[2]) citySet.add(r[2]);   // City Name (C)
+      if (r[11]) monthSet.add(r[11]); // Month (L) (computed if missing)
+      if (r[10]) nameSet.add(r[10]);  // Name (K)
+    });
+
+    const citySelect = document.getElementById("filterCity");
+    const monthSelect = document.getElementById("filterMonth");
+    const nameSelect = document.getElementById("filterName");
+
+    citySelect.innerHTML = `<option value="">City: All</option>`;
+    monthSelect.innerHTML = `<option value="">Month: All</option>`;
+    nameSelect.innerHTML = `<option value="">Name: All</option>`;
+
+    Array.from(citySet).sort((a,b)=>a.localeCompare(b)).forEach(v => {
+      citySelect.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    });
+    Array.from(monthSet).sort((a,b)=> {
+      // Try to sort by year then month if possible (Month Year format)
+      const pa = parseMonthYear(a);
+      const pb = parseMonthYear(b);
+      if (pa && pb) return pa.time - pb.time;
+      return a.localeCompare(b);
+    }).forEach(v => {
+      monthSelect.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    });
+    Array.from(nameSet).sort((a,b)=>a.localeCompare(b)).forEach(v => {
+      nameSelect.innerHTML += `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    });
+  }
+
+  function parseMonthYear(s) {
+    if (!s) return null;
+    // Expect formats like "January 2026" or "Jan 2026"
+    const parts = s.trim().split(" ");
+    if (parts.length < 2) return null;
+    const year = parseInt(parts[parts.length - 1], 10);
+    const monthName = parts.slice(0, parts.length - 1).join(" ");
+    const date = new Date(`${monthName} 1, ${year}`);
+    if (isNaN(date.getTime())) return null;
+    return { time: date.getTime(), date };
+  }
+
+  function applyFiltersAndRender() {
+    const city = document.getElementById("filterCity").value;
+    const month = document.getElementById("filterMonth").value;
+    const name = document.getElementById("filterName").value;
+    const search = document.getElementById("searchBox").value.trim().toLowerCase();
+
+    filteredData = sheetData.filter(r => {
+      if (city && r[2] !== city) return false;
+      if (month && r[11] !== month) return false;
+      if (name && r[10] !== name) return false;
+
+      if (search) {
+        const text = [
+          r[1], r[2], r[3], r[4], r[5], r[6],
+          r[7], r[8], r[9], r[10], r[11], r[12]
+        ].map(v => (v ?? "").toString().toLowerCase()).join(" ");
+        if (!text.includes(search)) return false;
+      }
+
+      return true;
+    });
+
+    renderSheetTable();
+    renderIncomeTable(); // update income table based on filtered data as well
+    drawCharts(); // update charts based on filtered/aggregated data
+  }
+
+  // Aggregate per city+month and compute averages
+  function computeMonthlyAverages(useFiltered = true) {
+    const rows = (useFiltered && filteredData.length) ? filteredData : sheetData;
+    const grouped = {};
+
+    rows.forEach(r => {
+      const city = r[2] ?? "Unknown";
+      const month = r[11] ?? "Unknown";
+      const totalIncome = Number(r[8] ?? 0);
+      const activeBoxes = Number(r[4] ?? 0);
+
+      const key = `${city}||${month}`;
+      if (!grouped[key]) {
+        grouped[key] = { city, month, totalIncome: 0, activeBoxes: 0 };
+      }
+      grouped[key].totalIncome += isNaN(totalIncome) ? 0 : totalIncome;
+      grouped[key].activeBoxes += isNaN(activeBoxes) ? 0 : activeBoxes;
+    });
+
+    const final = [];
+    Object.values(grouped).forEach(g => {
+      const avg = g.activeBoxes > 0 ? g.totalIncome / g.activeBoxes : 0;
+      final.push({
+        city: g.city,
+        month: g.month,
+        total: g.totalIncome,
+        activeBoxes: g.activeBoxes,
+        average: avg
+      });
+    });
+
+    // Sort by city then month (month parsed if possible)
+    final.sort((a,b) => {
+      const c = a.city.localeCompare(b.city);
+      if (c !== 0) return c;
+      const pa = parseMonthYear(a.month);
+      const pb = parseMonthYear(b.month);
+      if (pa && pb) return pa.time - pb.time;
+      return a.month.localeCompare(b.month);
+    });
+
+    return final;
+  }
+
+  function drawCharts() {
+    const monthly = computeMonthlyAverages();
+
+    if (!monthly.length) {
+      // Clear charts if needed
+      document.getElementById("chartCityMonth").innerHTML = "";
+      document.getElementById("chartPerBox").innerHTML = "";
+      return;
+    }
+
+    // Chart: Total Income by City-Month (top N or all)
+    const cityMonth = new google.visualization.DataTable();
+    cityMonth.addColumn("string", "City-Month");
+    cityMonth.addColumn("number", "Total Income");
+
+    monthly.forEach(r => {
+      cityMonth.addRow([`${r.city} (${r.month})`, r.total || 0]);
+    });
+
+    new google.visualization.ColumnChart(
+      document.getElementById("chartCityMonth")
+    ).draw(cityMonth, {
+      backgroundColor: "transparent",
+      legendTextStyle: { color: "#e5e7eb" },
+      hAxis: { textStyle: { color: "#e5e7eb" } },
+      vAxis: { textStyle: { color: "#e5e7eb" } },
+      height: 360
+    });
+
+    // Chart: Avg Income per Active Box by City (aggregate across months)
+    const perCity = {};
+    monthly.forEach(r => {
+      if (!perCity[r.city]) perCity[r.city] = { totalIncome: 0, activeBoxes: 0 };
+      perCity[r.city].totalIncome += r.total;
+      perCity[r.city].activeBoxes += r.activeBoxes;
+    });
+
+    const perBox = new google.visualization.DataTable();
+    perBox.addColumn("string", "City");
+    perBox.addColumn("number", "Avg Income / Active Box");
+
+    Object.keys(perCity).forEach(city => {
+      const p = perCity[city];
+      const avg = p.activeBoxes > 0 ? p.totalIncome / p.activeBoxes : 0;
+      perBox.addRow([city, avg]);
+    });
+
+    new google.visualization.ColumnChart(
+      document.getElementById("chartPerBox")
+    ).draw(perBox, {
+      backgroundColor: "transparent",
+      legendTextStyle: { color: "#e5e7eb" },
+      hAxis: { textStyle: { color: "#e5e7eb" } },
+      vAxis: { textStyle: { color: "#e5e7eb" } },
+      height: 360
+    });
+  }
+
+  function renderIncomeTable() {
+    const tbody = document.querySelector("#incomeTable tbody");
+    tbody.innerHTML = "";
+
+    const monthly = computeMonthlyAverages();
+
+    if (!monthly.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="muted">No income data loaded.</td></tr>`;
+      return;
+    }
+
+    monthly.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          <td class="num">${escapeHtml(r.city)}</td>
+          <td class="num">${escapeHtml(r.month)}</td>
+          <td class="num">$${Number(r.total || 0).toFixed(2)}</td>
+          <td class="num">$${Number(r.average || 0).toFixed(2)}</td>
+          <td class="num">${Number(r.activeBoxes || 0)}</td>
+        </tr>`;
+    });
+  }
+
+  function renderSheetTable() {
+    const tbody = document.querySelector("#sheetTable tbody");
+    tbody.innerHTML = "";
+    const rows = filteredData.length ? filteredData : sheetData;
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="muted">No raw sheet data loaded.</td></tr>`;
+      return;
+    }
+
+    rows.forEach(r => {
+      const rowHTML = `
+        <tr>
+          <td title="${escapeHtml(r[1] ?? "")}">${escapeHtml(r[1] ?? "")}</td>  <!-- Email -->
+          <td title="${escapeHtml(r[2] ?? "")}">${escapeHtml(r[2] ?? "")}</td>  <!-- City -->
+          <td class="num" title="${escapeHtml(r[3] ?? "")}">${escapeHtml(r[3] ?? "")}</td>  <!-- Total Boxes -->
+          <td class="num" title="${escapeHtml(r[4] ?? "")}">${escapeHtml(r[4] ?? "")}</td>  <!-- Active Boxes -->
+          <td class="num" title="${escapeHtml(r[5] ?? "")}">${escapeHtml(r[5] ?? "")}</td>  <!-- Deactive Boxes -->
+          <td class="num" title="${escapeHtml(r[6] ?? "")}">${escapeHtml(r[6] ?? "")}</td>  <!-- Boxes Add -->
+          <td class="num" title="${escapeHtml(r[7] ?? "")}">${escapeHtml(r[7] ?? "")}</td>  <!-- Total Current Boxes -->
+          <td class="num" title="${Number(r[8] ?? 0).toFixed(2)}">$${Number(r[8] ?? 0).toFixed(2)}</td>  <!-- Total Income -->
+          <td class="num" title="${escapeHtml(r[9] ?? "")}">${escapeHtml(r[9] ?? "")}</td>  <!-- Boxes In Hand -->
+          <td class="name" title="${escapeHtml(r[10] ?? "")}">${escapeHtml(r[10] ?? "")}</td> <!-- Name -->
+          <td title="${escapeHtml(r[11] ?? "")}">${escapeHtml(r[11] ?? "")}</td> <!-- Month -->
+          <td class="num" title="${Number(r[12] ?? 0).toFixed(2)}">$${Number(r[12] ?? 0).toFixed(2)}</td> <!-- Avg Income per Active Box -->
+        </tr>
+      `;
+      tbody.innerHTML += rowHTML;
+    });
+  }
+
+  function sortSheetTableByColumn(index, numeric = false) {
+    const rows = filteredData.length ? filteredData : sheetData;
+    const dir = sortState.table === index ? -sortState.dir : 1;
+    sortState = { table: index, dir };
+
+    rows.sort((a, b) => {
+      const va = a[index];
+      const vb = b[index];
+      if (numeric) {
+        const na = Number(va ?? 0);
+        const nb = Number(vb ?? 0);
+        return dir * (na - nb);
+      } else {
+        const sa = (va ?? "").toString().toLowerCase();
+        const sb = (vb ?? "").toString().toLowerCase();
+        if (sa < sb) return -dir;
+        if (sa > sb) return dir;
+        return 0;
+      }
+    });
+
+    if (filteredData.length) filteredData = rows;
+    else sheetData = rows;
+
+    renderSheetTable();
+  }
+
+  // Utility: escape HTML for safe insertion into attributes/text
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  window.onload = () => {
+    const loginBox = document.getElementById("loginBox");
+    const dashboard = document.getElementById("dashboard");
+    const userInfo = document.getElementById("userInfo");
+
+    document.getElementById("googleLoginBtn").onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).then(result => {
+        loginBox.style.display = "none";
+        dashboard.style.display = "block";
+        userInfo.textContent = result.user?.email || "";
+        google.charts.setOnLoadCallback(loadDataFromSheet);
+      }).catch(err => {
+        alert("Login failed: " + err.message);
+      });
+    };
+
+    document.getElementById("logoutBtn").onclick = () => {
+      auth.signOut().then(() => {
+        dashboard.style.display = "none";
+        loginBox.style.display = "block";
+        userInfo.textContent = "";
+        showSection(null);
+        setActiveToolbar(null);
+      });
+    };
+
+    document.getElementById("toolbarCharts").onclick = () => {
+      setActiveToolbar("toolbarCharts");
+      showSection("chartsSection");
+      drawCharts();
+    };
+
+    document.getElementById("toolbarIncome").onclick = () => {
+      setActiveToolbar("toolbarIncome");
+      showSection("incomeSection");
+      renderIncomeTable();
+    };
+
+    document.getElementById("toolbarSheet").onclick = () => {
+      setActiveToolbar("toolbarSheet");
+      showSection("sheetSection");
+      renderSheetTable();
+    };
+
+    document.getElementById("filterCity").onchange =
+    document.getElementById("filterMonth").onchange =
+    document.getElementById("filterName").onchange =
+    document.getElementById("searchBox").oninput = applyFiltersAndRender;
+
+    // Sorting on raw sheet headers
+    const sheetHeaders = document.querySelectorAll("#sheetTable thead th");
+    sheetHeaders.forEach((th, idx) => {
+      th.addEventListener("click", () => {
+        // Map displayed column index (0..11) to sheet index (A..M => 0..12)
+        const colMap = [1,2,3,4,5,6,7,8,9,10,11,12]; // B..M
+        const sheetIndex = colMap[idx];
+        // numeric columns in displayed table: indices 2,3,4,5,6,7,8,11 (0-based displayed)
+        const numericDisplayed = [2,3,4,5,6,7,8,11];
+        const isNumeric = numericDisplayed.includes(idx);
+        sortSheetTableByColumn(sheetIndex, isNumeric);
+      });
+    });
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginBox.style.display = "none";
+        dashboard.style.display = "block";
+        userInfo.textContent = user.email || "";
+        google.charts.setOnLoadCallback(loadDataFromSheet);
+      } else {
+        dashboard.style.display = "none";
+        loginBox.style.display = "block";
+        userInfo.textContent = "";
+        showSection(null);
+        setActiveToolbar(null);
+      }
+    });
+  };
+</script>
+
+</body>
+</html>
